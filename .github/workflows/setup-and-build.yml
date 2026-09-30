@@ -1,0 +1,346 @@
+name: Build Modrinth Launcher
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create launcher project
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p app/src/main/java/com/modrinth/launcher
+          mkdir -p app/src/main/res/values
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "ModrinthLauncher"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+              id 'org.jetbrains.kotlin.android' version '2.0.21' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+
+          android {
+              namespace 'com.modrinth.launcher'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.modrinth.launcher'
+                  minSdk 24
+                  targetSdk 35
+                  versionCode 1
+                  versionName '0.1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/res/values/colors.xml <<'EOF'
+          <resources>
+              <color name="background">#111318</color>
+              <color name="panel">#191C23</color>
+              <color name="panel2">#20242C</color>
+              <color name="accent">#5F9EFF</color>
+              <color name="text">#FFFFFF</color>
+              <color name="secondary">#A8ADB8</color>
+          </resources>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:colorAccent">#5F9EFF</item>
+                  <item name="android:navigationBarColor">#111318</item>
+                  <item name="android:statusBarColor">#111318</item>
+                  <item name="android:windowLightStatusBar">false</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="Modrinth"
+                  android:allowBackup="true"
+                  android:supportsRtl="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                  </activity>
+
+              </application>
+
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/modrinth/launcher/MainActivity.kt <<'EOF'
+          package com.modrinth.launcher
+
+          import android.app.Activity
+          import android.os.Bundle
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.view.Gravity
+          import android.view.View
+          import android.widget.*
+
+          class MainActivity : Activity() {
+
+              private val bg = Color.rgb(17, 19, 24)
+              private val panel = Color.rgb(25, 28, 35)
+              private val panel2 = Color.rgb(32, 36, 44)
+              private val white = Color.WHITE
+              private val secondary = Color.rgb(168, 173, 184)
+              private val accent = Color.rgb(95, 158, 255)
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+
+                  val root = LinearLayout(this)
+                  root.orientation = LinearLayout.VERTICAL
+                  root.setBackgroundColor(bg)
+
+                  val header = TextView(this)
+                  header.text = "MODRINTH"
+                  header.textSize = 22f
+                  header.setTextColor(white)
+                  header.setTypeface(null, Typeface.BOLD)
+                  header.gravity = Gravity.CENTER_VERTICAL
+                  header.setPadding(24, 20, 24, 20)
+
+                  root.addView(
+                      header,
+                      LinearLayout.LayoutParams(
+                          -1,
+                          72
+                      )
+                  )
+
+                  val scroll = ScrollView(this)
+
+                  val content = LinearLayout(this)
+                  content.orientation = LinearLayout.VERTICAL
+                  content.setPadding(20, 10, 20, 30)
+
+                  val title = TextView(this)
+                  title.text = "Мои сборки"
+                  title.textSize = 28f
+                  title.setTextColor(white)
+                  title.setTypeface(null, Typeface.BOLD)
+
+                  content.addView(title)
+
+                  val subtitle = TextView(this)
+                  subtitle.text = "Minecraft Java Edition"
+                  subtitle.textSize = 15f
+                  subtitle.setTextColor(secondary)
+                  subtitle.setPadding(0, 5, 0, 20)
+
+                  content.addView(subtitle)
+
+                  addInstance(
+                      content,
+                      "Minecraft 1.21.1",
+                      "Fabric • 4 мода"
+                  )
+
+                  addInstance(
+                      content,
+                      "Minecraft 1.20.1",
+                      "Forge • 12 модов"
+                  )
+
+                  addInstance(
+                      content,
+                      "Новая сборка",
+                      "Создать профиль"
+                  )
+
+                  val browse = TextView(this)
+                  browse.text = "Обзор модов"
+                  browse.textSize = 22f
+                  browse.setTextColor(white)
+                  browse.setTypeface(null, Typeface.BOLD)
+                  browse.setPadding(0, 30, 0, 10)
+
+                  content.addView(browse)
+
+                  val info = TextView(this)
+                  info.text =
+                      "В будущих версиях здесь будет каталог Modrinth, поиск модов, сборок, шейдеров и ресурсов."
+                  info.textSize = 15f
+                  info.setTextColor(secondary)
+                  info.setPadding(0, 0, 0, 20)
+
+                  content.addView(info)
+
+                  scroll.addView(content)
+                  root.addView(
+                      scroll,
+                      LinearLayout.LayoutParams(
+                          -1,
+                          0,
+                          1f
+                      )
+                  )
+
+                  val bottom = LinearLayout(this)
+                  bottom.orientation = LinearLayout.HORIZONTAL
+                  bottom.gravity = Gravity.CENTER
+                  bottom.setPadding(10, 8, 10, 12)
+
+                  addNavButton(bottom, "Играть")
+                  addNavButton(bottom, "Библиотека")
+                  addNavButton(bottom, "Обзор")
+                  addNavButton(bottom, "Настройки")
+
+                  root.addView(
+                      bottom,
+                      LinearLayout.LayoutParams(
+                          -1,
+                          70
+                      )
+                  )
+
+                  setContentView(root)
+              }
+
+              private fun addInstance(
+                  parent: LinearLayout,
+                  name: String,
+                  description: String
+              ) {
+                  val box = LinearLayout(this)
+                  box.orientation = LinearLayout.VERTICAL
+                  box.setPadding(20, 18, 20, 18)
+                  box.setBackgroundColor(panel2)
+
+                  val title = TextView(this)
+                  title.text = name
+                  title.textSize = 19f
+                  title.setTextColor(white)
+                  title.setTypeface(null, Typeface.BOLD)
+
+                  box.addView(title)
+
+                  val desc = TextView(this)
+                  desc.text = description
+                  desc.textSize = 14f
+                  desc.setTextColor(secondary)
+                  desc.setPadding(0, 5, 0, 15)
+
+                  box.addView(desc)
+
+                  val button = Button(this)
+                  button.text = if (name == "Новая сборка") "Создать" else "Играть"
+                  button.setTextColor(white)
+                  button.setBackgroundColor(accent)
+
+                  box.addView(
+                      button,
+                      LinearLayout.LayoutParams(
+                          -1,
+                          50
+                      )
+                  )
+
+                  val params = LinearLayout.LayoutParams(
+                      -1,
+                      LinearLayout.LayoutParams.WRAP_CONTENT
+                  )
+
+                  params.setMargins(0, 0, 0, 14)
+
+                  parent.addView(box, params)
+              }
+
+              private fun addNavButton(
+                  parent: LinearLayout,
+                  text: String
+              ) {
+                  val button = Button(this)
+                  button.text = text
+                  button.textSize = 11f
+                  button.setTextColor(white)
+                  button.setBackgroundColor(Color.TRANSPARENT)
+
+                  parent.addView(
+                      button,
+                      LinearLayout.LayoutParams(
+                          0,
+                          -1,
+                          1f
+                      )
+                  )
+              }
+          }
+          EOF
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Modrinth-Launcher-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+EOF
